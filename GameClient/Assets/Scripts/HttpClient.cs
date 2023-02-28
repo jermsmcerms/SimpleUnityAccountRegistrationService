@@ -1,39 +1,79 @@
+using Newtonsoft.Json;
 using System;
+using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class HttpClient {
-    private readonly ISerializationOption _serializationOption;
+public static class HttpClient {
+    public static async Task<T> 
+    Get<T>(string endpoint) {
+        var getRequest = CreateRequest(endpoint);
+        getRequest.SendWebRequest();
 
-    public HttpClient(ISerializationOption serializationOption) {
-        _serializationOption = serializationOption;
+        while(!getRequest.isDone) {
+            await Task.Delay(10);
+        }
+
+        var result = JsonConvert
+            .DeserializeObject<T>(getRequest.downloadHandler.text);
+
+        Debug.Log(result);
+
+        return result;
     }
 
-    public async Task<TResultType> Get<TResultType>(string url) {
+    public static async Task<AuthenticationResponse> 
+    Register(string endpoint, object payload) {
         try {
-            using var www = UnityWebRequest.Get(url);
+            var postRequest = CreateRequest(
+                endpoint,
+                RequestType.POST,
+                payload);
+            postRequest.SendWebRequest();
 
-            www.SetRequestHeader(
-                "Content-Type", 
-                _serializationOption.ContentType);
-            
-            var operation = www.SendWebRequest();
-            while (!operation.isDone) {
-                await Task.Yield();
+            while (!postRequest.isDone) {
+                await Task.Delay(10);
             }
 
-            if (www.result != UnityWebRequest.Result.Success) {
-                Debug.Log($"Error: {www.error}");
+            if (postRequest.result == UnityWebRequest.Result.Success) {
+                return JsonConvert
+                    .DeserializeObject<AuthenticationResponse>(postRequest.downloadHandler.text);
             }
-
-            var result = _serializationOption
-                .Deserialize<TResultType>(www.downloadHandler.text);
-            return result;
-        } 
-        catch (Exception ex) {
-            Debug.LogError($"{nameof(Get)} failed: {ex.Message}");
+            return default;
+        }
+        catch(Exception e) {
+            Debug.LogError($"Error: {e.Message}");
             return default;
         }
     }
+
+    private static UnityWebRequest 
+    CreateRequest(string path, 
+        RequestType type = RequestType.GET, 
+        object data = null) 
+    {
+        var request = new UnityWebRequest(path, type.ToString());
+
+        if(data != null) {
+            string serializedObject = JsonConvert.SerializeObject(data);
+            Debug.Log(serializedObject);
+            var bodyRaw = 
+                Encoding.UTF8.GetBytes(serializedObject);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        }
+
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        return request;
+    }
+}
+
+public enum RequestType {
+    GET,
+    POST,
+    PUT,
+    DELETE
 }
