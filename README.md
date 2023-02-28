@@ -1,4 +1,4 @@
-A build for the client can be found at: https://soupkitchenstudios.itch.io/simple-unity-account-registration-service
+A build for the client can be found at: https://soupkitchenstudios.itch.io/simple-unity-account-registration-service </br>
 In order to save time pushing changes there are some packages you will need to install to unity on your own in order to use this.
 - Netwonsoft Json for unity
 - Text Mesh Pro
